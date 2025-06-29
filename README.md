@@ -1,3 +1,3 @@
 ### Objective
-SQL tuotrial
-SQL interview questions
++ SQL tutorial
++ SQL interview questions
