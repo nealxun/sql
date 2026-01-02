@@ -377,6 +377,25 @@ display: none;
 </ul></li>
 </ul>
 </div>
+<div id="window-function-examples" class="section level2">
+<h2>Window function examples</h2>
+<p>To calculate a running total of sales ordered by date</p>
+<pre class="sql"><code>SELECT
+    sales_month,
+    sales,
+    SUM(sales) OVER (ORDER BY sales_month) AS running_total
+FROM
+    sales;</code></pre>
+<p>To calculate the total salary for each department and display it next
+to each employee’s details</p>
+<pre class="sql"><code>SELECT
+    name,
+    dept_id,
+    salary,
+    SUM(salary) OVER (PARTITION BY dept_id) AS total_department_salary
+FROM
+    employees;</code></pre>
+</div>
 </div>
 
 
