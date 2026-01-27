@@ -7,6 +7,8 @@
 ## SQL interview questions
 + 45 leetcode database challenge.
     + Question list: https://leetcode.com/problem-list/e97a9e5m/
++ 103 leetcode database questions, without premium
+    + Question list: https://leetcode.com/problem-list/whzhtem1/
 + 320 leetcode database challenge.
     + Question list: https://leetcode.com/problemset/database/
     + Solutions: https://github.com/mrinal1704/SQL-Leetcode-Challenge?tab=readme-ov-file
@@ -45,3 +47,24 @@ FROM
 ORDER BY
     Department, DeptRank;
 ```
+
+## Regular expression examples
+The prefix name is a string that may contain letters (upper or lower case), digits, underscore '_', period '.', and/or dash '-'. The prefix name must start with a letter.
+The domain is '@leetcode.com'.
+c means case sensitive, i means case insensitive
+```sql
+SELECT
+    *
+FROM Users
+WHERE REGEXP_LIKE(mail, '^[a-z][a-zA-Z0-9_.-]*@leetcode\\.com$', 'c');
+```
+
+## Date functions
+
+```sql
+EXTRACT(month FROM OrderDate)
+DATE_ADD(OrderDate, INTERVAL 30 DAY) AS OrderPayDate
+DATEDIFF(date1, date2) -- return # of days between two date values.
+
+```
+

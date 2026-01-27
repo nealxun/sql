@@ -632,3 +632,595 @@ FROM seat_swap;
 
 
 
+----------------------------------------------------------
+-- 627 Swap sex of employees
+----------------------------------------------------------
+-- Write a solution to swap all 'f' and 'm' values 
+-- (i.e., change all 'f' values to 'm' and vice versa) with a single update statement and no intermediate temporary tables.
+-- Note that you must write a single update statement, do not write any select statement for this problem.
+UPDATE Salary
+SET
+    sex = CASE
+            WHEN sex = 'm' THEN 'f'
+            WHEN sex = 'f' THEN 'm'
+          END;
+
+
+
+
+----------------------------------------------------------
+-- 1158 Market analysis I
+----------------------------------------------------------
+-- Write a solution to find for each user, the join date and the number of orders they made as a buyer in 2019.
+SELECT
+    u.user_id AS buyer_id,
+    u.join_date,
+    -- o.order_id,
+    COUNT(o.order_id) AS orders_in_2019
+FROM Users u
+LEFT JOIN Orders o ON u.user_id = o.buyer_id AND EXTRACT(year FROM o.order_date) = '2019'
+GROUP BY u.user_id, u.join_date
+
+
+
+
+----------------------------------------------------------
+-- 1393 capital gain/loss
+----------------------------------------------------------
+-- Write a solution to report the Capital gain/loss for each stock.
+-- The Capital gain/loss of a stock is the total gain or loss after buying and selling the stock one or many times.
+WITH stock_gain_loss AS (
+    SELECT
+        stock_name,
+        operation,
+        operation_day,
+        price,
+        CASE
+            WHEN operation = 'Buy' THEN -price
+            WHEN operation = 'Sell' THEN price
+            ELSE 0
+        END AS gain_loss
+    FROM Stocks
+)
+
+SELECT
+    stock_name,
+    SUM(gain_loss) AS capital_gain_loss
+FROM stock_gain_loss
+GROUP BY stock_name;
+
+-- alternative solution
+SELECT
+    stock_name,
+    SUM(CASE
+            WHEN operation = 'Buy' THEN -price
+            WHEN operation = 'Sell' THEN price
+            ELSE 0
+        END) AS capital_gain_loss
+FROM Stocks
+GROUP BY stock_name;
+
+
+
+
+----------------------------------------------------------
+-- 1890 The Latest Login in 2020
+----------------------------------------------------------
+-- Write a solution to report the latest login for all users in the year 2020. Do not include the users who did not login in 2020.
+SELECT
+    user_id,
+    MAX(time_stamp) AS last_stamp
+FROM Logins
+WHERE EXTRACT(year FROM time_stamp) = '2020'
+GROUP BY user_id;
+
+
+
+
+----------------------------------------------------------
+-- 577 employee bonus
+----------------------------------------------------------
+SELECT
+    e.name,
+    b.bonus
+FROM Employee e
+LEFT JOIN Bonus b ON e.empId = b.empId
+WHERE b.bonus < 1000 OR b.bonus IS NULL;
+
+
+
+
+----------------------------------------------------------
+-- 570 Manager with the least 5 direct reports
+----------------------------------------------------------
+-- Write a solution to find managers with at least five direct reports.
+WITH employee_with_direct_report AS (
+    SELECT
+        e1.id,
+        e1.name,
+        e2.id AS direct_report
+    FROM Employee e1
+    LEFT JOIN Employee e2 ON e1.id = e2.managerId
+)
+
+SELECT
+    --id,
+    name
+    --COUNT(direct_report) AS num_direct_report
+FROM employee_with_direct_report
+GROUP BY id
+HAVING COUNT(direct_report) >= 5;
+
+
+
+
+----------------------------------------------------------
+-- 550 game play analysis IV
+----------------------------------------------------------
+-- Write a solution to report the fraction of players that logged in again on the day after the day they first logged in, 
+-- rounded to 2 decimal places. In other words, you need to determine the number of players 
+-- who logged in on the day immediately following their initial login, and divide it by the number of total players.
+WITH first_login AS (
+    SELECT
+        player_id,
+        MIN(event_date) AS first_login_date
+    FROM Activity
+    GROUP BY player_id
+),
+
+next_day_login AS (
+    SELECT
+        fl.player_id
+    FROM first_login fl
+    JOIN Activity a ON a.player_id = fl.player_id 
+        AND a.event_date = DATE_ADD(fl.first_login_date, INTERVAL 1 DAY)
+)
+
+SELECT
+    ROUND(COUNT(DISTINCT ndl.player_id) / COUNT(DISTINCT fl.player_id), 2) AS fraction
+FROM first_login fl
+LEFT JOIN next_day_login ndl ON fl.player_id = ndl.player_id;
+
+
+
+
+----------------------------------------------------------
+-- 585 investment in 2016
+----------------------------------------------------------
+-- Write a solution to report the sum of all total investment values in 2016 tiv_2016, for all policyholders who:
+-- have the same tiv_2015 value as one or more other policyholders, and
+-- are not located in the same city as any other policyholder (i.e., the (lat, lon) attribute pairs must be unique).
+WITH same_tiv_2015 AS (
+    SELECT
+        tiv_2015
+    FROM Insurance
+    GROUP BY tiv_2015
+    HAVING COUNT(pid) > 1
+),
+
+distinct_city AS (
+    SELECT
+        concat(lat, "-", lon) AS location
+    FROM Insurance
+    GROUP BY lat, lon
+    HAVING COUNT(pid) = 1
+)
+
+SELECT
+    ROUND(SUM(tiv_2016), 2) AS tiv_2016
+FROM Insurance
+WHERE
+    tiv_2015 IN (SELECT * FROM same_tiv_2015)
+    AND concat(lat, "-", lon) IN (SELECT * FROM distinct_city);
+
+
+
+
+----------------------------------------------------------
+-- 602 Friend Requests II: Who Has the Most Friends
+----------------------------------------------------------
+-- Write a solution to find the people who have the most friends and the most friends number.
+WITH ra_comb AS (
+    SELECT
+        ra1.requester_id AS r_id,
+        ra1.accepter_id AS a_id
+    FROM RequestAccepted ra1
+
+    UNION ALL
+
+    SELECT
+        ra2.accepter_id AS r_id,
+        ra2.requester_id AS a_id
+    FROM RequestAccepted ra2
+)
+
+SELECT
+    r_id AS id,
+    COUNT(a_id) AS num
+FROM
+    ra_comb
+GROUP BY r_id
+ORDER BY COUNT(a_id) DESC
+LIMIT 1;
+
+
+
+
+----------------------------------------------------------
+-- 610 triangle judgement
+----------------------------------------------------------
+-- Report for every three line segments whether they can form a triangle.
+SELECT
+    x,
+    y,
+    z,
+    
+    CASE
+        WHEN x + y > z AND x + z > y AND y + z > x THEN "Yes"
+        ELSE "No"
+    END AS triangle
+
+FROM Triangle;
+
+
+
+
+----------------------------------------------------------
+-- 619 biggest single number
+----------------------------------------------------------
+-- Find the largest single number. If there is no single number, report null.
+WITH single_num AS (
+    SELECT
+        num,
+        COUNT(num) AS cnt
+    FROM MyNumbers
+    GROUP BY num
+    HAVING COUNT(num) = 1
+)
+
+SELECT
+    MAX(num) AS num
+FROM single_num;
+
+
+
+
+----------------------------------------------------------
+-- 1045 customers who brought all products
+----------------------------------------------------------
+-- Write a solution to report the customer ids from the Customer table that bought all the products in the Product table.
+SELECT
+    c.customer_id
+    -- COUNT(DISTINCT product_key) AS unique_prod_cnt
+
+FROM Customer c
+GROUP BY c.customer_id
+HAVING COUNT(DISTINCT product_key) = (SELECT COUNT(product_key) FROM Product);
+
+
+
+----------------------------------------------------------
+-- 1070 product sales analysis III
+----------------------------------------------------------
+-- Write a solution to find all sales that occurred in the first year each product was sold.
+-- For each product_id, identify the earliest year it appears in the Sales table.
+-- Return all sales entries for that product in that year.
+WITH product_first_year AS (
+    SELECT
+        product_id,
+        min(year) AS first_sales_year
+    FROM Sales
+    GROUP BY product_id
+)
+
+SELECT
+    s.product_id,
+    pfy.first_sales_year AS first_year,
+    s.quantity,
+    s.price
+FROM Sales s
+INNER JOIN product_first_year pfy ON s.product_id = pfy.product_id AND s.year = pfy.first_sales_year;
+
+
+
+
+----------------------------------------------------------
+-- 1075 project employees I
+----------------------------------------------------------
+-- Write an SQL query that reports the average experience years of all the employees for each project, rounded to 2 digits.
+SELECT
+    p.project_id,
+    ROUND(AVG(e.experience_years), 2) AS average_years
+FROM Project p
+LEFT JOIN Employee e ON p.employee_id = e.employee_id
+GROUP BY p.project_id;
+
+
+
+
+----------------------------------------------------------
+-- 1164 product price at a given date
+----------------------------------------------------------
+-- Write a solution to find the prices of all products on the date 2019-08-16.
+WITH price_given_date AS (
+    SELECT
+        product_id,
+        max(change_date) AS latest_change_date
+    FROM Products
+    WHERE change_date <= "2019-08-16"
+    GROUP BY product_id
+),
+
+product_with_price_change AS (
+    SELECT
+        p.product_id,
+        p.new_price AS price
+    FROM Products p 
+    INNER JOIN price_given_date pgd ON p.product_id = pgd.product_id AND p.change_date = pgd.latest_change_date
+),
+
+product_without_change AS (
+    SELECT
+        DISTINCT p.product_id,
+        10 AS price
+    FROM Products p 
+    WHERE p.product_id NOT IN (SELECT product_id FROM price_given_date)
+)
+
+SELECT * FROM product_with_price_change
+UNION
+SELECT * FROM product_without_change;
+
+
+
+----------------------------------------------------------
+-- 1174 immediate food delivery II
+----------------------------------------------------------
+-- Write a solution to find the percentage of immediate orders in the first orders of all customers, rounded to 2 decimal places.
+WITH first_order AS (
+    SELECT
+        customer_id,
+        min(order_date) AS first_order_date
+    FROM Delivery
+    GROUP BY customer_id
+),
+
+first_order_type AS (
+    SELECT
+        d.delivery_id,
+        d.customer_id,
+        CASE
+            WHEN d.order_date = d.customer_pref_delivery_date THEN "immediate"
+            ELSE "scheduled"
+        END AS order_type
+    FROM Delivery d
+    INNER JOIN first_order fo ON d.customer_id = fo.customer_id AND d.order_date = fo.first_order_date
+)
+
+SELECT
+    ROUND(SUM(CASE WHEN order_type = "immediate" THEN 1 ELSE 0 END) / COUNT(delivery_id) * 100, 2) AS immediate_percentage
+FROM first_order_type;
+
+
+
+
+----------------------------------------------------------
+-- 1193 monthly transactions I
+----------------------------------------------------------
+-- Write an SQL query to find for each month and country, the number of transactions and their total amount,
+-- the number of approved transactions and their total amount.
+SELECT
+    SUBSTRING(trans_date, 1, 7) AS month,
+    country,
+    COUNT(id) AS trans_count,
+    COUNT(CASE WHEN state = 'approved' THEN id ELSE NULL END) AS approved_count,
+    SUM(amount) AS trans_total_amount,
+    SUM(CASE WHEN state = 'approved' THEN amount ELSE 0 END) AS approved_total_amount
+FROM Transactions
+GROUP BY SUBSTRING(trans_date, 1, 7), country;
+
+
+
+
+----------------------------------------------------------
+-- 1204 last person to fit in the bus
+----------------------------------------------------------
+-- Write a solution to find the person_name of the last person that can 
+-- fit on the bus without exceeding the weight limit. The test cases are generated 
+-- such that the first person does not exceed the weight limit.
+WITH cum_weight AS (
+    SELECT
+        turn,
+        person_id,
+        person_name,
+        weight,
+        SUM(weight) OVER (ORDER BY turn) AS total_weight
+    FROM Queue
+    ORDER BY turn
+)
+
+SELECT person_name 
+FROM cum_weight 
+WHERE total_weight <= 1000
+ORDER BY turn DESC
+LIMIT 1;
+
+
+
+
+----------------------------------------------------------
+-- 1211 queries quality and percentages
+----------------------------------------------------------
+-- Write a solution to find each query_name, the quality and poor_query_percentage.
+-- Both quality and poor_query_percentage should be rounded to 2 decimal places.
+SELECT
+    query_name,
+    ROUND(AVG(rating/position), 2) AS quality,
+    ROUND(SUM(CASE WHEN rating < 3 THEN 1 ELSE 0 END) / COUNT(query_name) * 100, 2) AS poor_query_percentage
+FROM Queries
+GROUP BY query_name;
+
+
+
+
+----------------------------------------------------------
+-- 1251 average selling price
+----------------------------------------------------------
+-- Write a solution to find the average selling price of each product.
+WITH product AS (
+    SELECT DISTINCT product_id FROM Prices
+), 
+
+product_sell_price AS (
+    SELECT
+        p.product_id,
+        ROUND(SUM(u.units * pr.price) / SUM(u.units), 2) AS average_price0
+    FROM product p
+    LEFT JOIN UnitsSold u ON p.product_id = u.product_id
+    LEFT JOIN Prices pr ON u.product_id = pr.product_id AND u.purchase_date >= pr.start_date AND u.purchase_date <= pr.end_date
+    GROUP BY p.product_id
+)
+
+SELECT
+    product_id,
+    CASE WHEN average_price0 IS NULL THEN 0 ELSE average_price0 END AS average_price
+FROM product_sell_price;
+
+
+
+
+----------------------------------------------------------
+-- 1280 students and examinations
+----------------------------------------------------------
+WITH attended_exam AS (
+    SELECT
+        e.student_id,
+        s.student_name,
+        e.subject_name,
+        CONCAT(e.student_id, e.subject_name) AS id_subject,
+        COUNT(*) AS attended_exams
+
+    FROM Examinations e
+    LEFT JOIN Students s ON e.student_id = s.student_id
+    GROUP BY 1,2,3,4
+),
+
+student_subject AS (
+    SELECT
+        st.student_id,
+        st.student_name,
+        su.subject_name,
+        CONCAT(st.student_id, su.subject_name) AS id_subject,
+        0 AS attended_exams
+    FROM Students st
+    JOIN Subjects su ON 1 = 1
+)
+
+SELECT
+    ss.student_id,
+    ss.student_name,
+    ss.subject_name,
+    CASE WHEN ae.attended_exams IS NULL THEN 0 ELSE ae.attended_exams END AS attended_exams
+FROM student_subject ss
+LEFT JOIN attended_exam ae ON ss.id_subject = ae.id_subject
+ORDER BY ss.student_id, ss.subject_name;
+
+
+
+
+----------------------------------------------------------
+-- 1321 restaurant growth
+----------------------------------------------------------
+WITH unique_visit AS (
+    SELECT
+        visited_on,
+        SUM(amount) AS amount
+    FROM Customer
+    GROUP BY visited_on
+)
+
+SELECT
+    c1.visited_on,
+    SUM(c2.amount) AS amount,
+    ROUND(AVG(c2.amount), 2) AS average_amount
+FROM unique_visit c1
+--LEFT JOIN unique_visit c2 ON c1.visited_on <= c2.visited_on + 6 AND c1.visited_on >= c2.visited_on
+LEFT JOIN unique_visit c2 ON DATEDIFF(c1.visited_on, c2.visited_on) BETWEEN 0 and 6
+WHERE c1.visited_on >= DATE_ADD((SELECT MIN(visited_on) FROM Customer), INTERVAL 6 DAY)
+GROUP BY 1
+ORDER BY c1.visited_on;
+
+
+
+
+----------------------------------------------------------
+-- 1327 list the products ordered in a period
+----------------------------------------------------------
+SELECT
+    p.product_name,
+    SUM(o.unit) AS unit
+
+FROM Orders o
+LEFT JOIN Products p ON o.product_id = p.product_id
+#WHERE YEAR(o.order_date) = 2020 AND MONTH(o.order_date) = 2
+GROUP BY p.product_name
+HAVING SUM(o.unit) >= 100;
+
+
+
+
+----------------------------------------------------------
+-- 1341 movie rating
+----------------------------------------------------------
+# Write your MySQL query statement below
+WITH user_rating AS (
+    SELECT
+        u.user_id,
+        u.name,
+        COUNT(DISTINCT mr.movie_id) AS cnt_movie_rated
+    FROM Users u
+    LEFT JOIN MovieRating mr ON u.user_id = mr.user_id
+    GROUP BY 1,2
+    ORDER BY COUNT(DISTINCT mr.movie_id) DESC, u.name
+    LIMIT 1
+
+),
+
+movie_rating AS (
+    SELECT
+        m.movie_id,
+        m.title,
+        AVG(rating) AS avg_rating
+    FROM Movies m
+    LEFT JOIN MovieRating mr ON m.movie_id = mr.movie_id
+    WHERE YEAR(mr.created_at) = 2020 AND MONTH(mr.created_at) = 2
+    GROUP BY 1,2
+    ORDER BY AVG(rating) DESC, m.title
+    LIMIT 1
+)
+
+SELECT name AS results FROM user_rating
+UNION ALL
+SELECT title AS results FROM movie_rating;
+
+
+
+
+----------------------------------------------------------
+-- 1517 find users with valid e-mails
+----------------------------------------------------------
+SELECT *
+FROM Users
+WHERE REGEXP_LIKE(mail, '^[a-z][a-zA-Z0-9_.-]*@leetcode\\.com$', 'c');
+
+
+
+
+
+
+
+
+
+
+
+
