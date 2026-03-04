@@ -1162,7 +1162,7 @@ SELECT
 
 FROM Orders o
 LEFT JOIN Products p ON o.product_id = p.product_id
-#WHERE YEAR(o.order_date) = 2020 AND MONTH(o.order_date) = 2
+WHERE YEAR(o.order_date) = 2020 AND MONTH(o.order_date) = 2
 GROUP BY p.product_name
 HAVING SUM(o.unit) >= 100;
 
@@ -1172,7 +1172,6 @@ HAVING SUM(o.unit) >= 100;
 ----------------------------------------------------------
 -- 1341 movie rating
 ----------------------------------------------------------
-# Write your MySQL query statement below
 WITH user_rating AS (
     SELECT
         u.user_id,
@@ -1211,16 +1210,376 @@ SELECT title AS results FROM movie_rating;
 ----------------------------------------------------------
 SELECT *
 FROM Users
-WHERE REGEXP_LIKE(mail, '^[a-z][a-zA-Z0-9_.-]*@leetcode\\.com$', 'c');
+WHERE REGEXP_LIKE(mail, '^[a-zA-Z][a-zA-Z0-9_.-]*@leetcode\\.com$', 'c');
 
 
 
 
+----------------------------------------------------------
+-- 1633 percentage of users attended a contest
+----------------------------------------------------------
+SELECT
+    --u.user_id,
+    --u.user_name,
+    r1.contest_id,
+    --r2.contest_id AS registered_contest
+    ROUND(COUNT(r2.contest_id) / COUNT(u.user_id) * 100, 2) AS percentage
+FROM Users u
+JOIN Register r1
+LEFT JOIN Register r2 ON u.user_id = r2.user_id AND r1.contest_id = r2.contest_id
+GROUP BY r1.contest_id
+ORDER BY ROUND(COUNT(r2.contest_id) / COUNT(u.user_id) * 100, 2) DESC, r1.contest_id
 
 
 
 
+----------------------------------------------------------
+-- 1661 average time of processing per machine
+----------------------------------------------------------
+WITH activity_start AS (
+    SELECT
+        machine_id,
+        process_id,
+        timestamp AS start
+    FROM Activity
+    WHERE activity_type = "start"
+),
+
+activity_end AS (
+    SELECT
+        machine_id,
+        process_id,
+        timestamp AS end
+    FROM Activity
+    WHERE activity_type = "end"
+)
+
+SELECT
+    act_s.machine_id,
+    ROUND(AVG(act_e.end - act_s.start), 3) AS processing_time
+FROM activity_start act_s
+JOIN activity_end act_e ON act_s.machine_id = act_e.machine_id AND act_s.process_id = act_e.process_id
+GROUP BY act_s.machine_id;
 
 
 
 
+----------------------------------------------------------
+-- 1731 the number of employees which reported to each employee
+----------------------------------------------------------
+SELECT
+    --e1.employee_id,
+    --e1.age AS employee_age,
+    e2.employee_id AS manager_id,
+    e2.name AS manager_name,
+    COUNT(e1.employee_id) AS reports_count,
+    ROUND(AVG(e1.age), 0) AS average_age
+FROM Employees e1
+LEFT JOIN Employees e2 ON e1.reports_to = e2.employee_id
+WHERE e2.employee_id IS NOT NULL
+GROUP BY 1,2
+ORDER BY 1;
+
+
+
+
+----------------------------------------------------------
+-- 1789 primary department for each employee
+----------------------------------------------------------
+WITH one_department AS (
+    SELECT
+        employee_id,
+        COUNT(department_id) AS cnt_department
+    FROM Employee
+    GROUP BY employee_id
+    HAVING COUNT(department_id) = 1
+),
+
+employee_one_department AS (
+    SELECT
+        employee_id,
+        department_id
+    FROM Employee
+    WHERE employee_id IN (SELECT employee_id FROM one_department)
+)
+
+SELECT
+    employee_id,
+    department_id
+FROM Employee
+WHERE primary_flag = "Y"
+
+UNION ALL
+
+SELECT
+    employee_id,
+    department_id
+FROM employee_one_department;
+
+
+
+
+----------------------------------------------------------
+-- 1907 count salary categories
+----------------------------------------------------------
+# Write your MySQL query statement below
+WITH account_cat AS (
+    SELECT
+        account_id,
+        income,
+        CASE
+            WHEN income < 20000 THEN 'Low Salary'
+            WHEN income >= 20000 AND income <= 50000 THEN 'Average Salary'
+            ELSE 'High Salary'
+        END AS category
+    FROM Accounts
+),
+
+account_cat_cnt AS (
+    SELECT
+        category,
+        COUNT(account_id) AS accounts_count
+    FROM account_cat
+    GROUP BY category
+),
+
+account_cnt0 AS (
+    SELECT 'Low Salary' AS category, 0 AS accounts_count
+    UNION ALL
+    SELECT 'Average Salary' AS category, 0 AS accounts_count
+    UNION ALL
+    SELECT 'High Salary' AS category, 0 AS accounts_count
+)
+
+SELECT 
+    ac0.category,
+    CASE
+        WHEN acc.accounts_count != 0 THEN acc.accounts_count
+        ELSE ac0.accounts_count
+    END AS accounts_count
+FROM account_cnt0 ac0
+LEFT JOIN account_cat_cnt acc ON ac0.category = acc.category;
+
+
+
+
+----------------------------------------------------------
+-- 1934 confirmation rate
+----------------------------------------------------------
+WITH confirmation_cnt AS (
+    SELECT
+        s.user_id,
+        SUM(CASE WHEN action = 'confirmed' THEN 1 ELSE 0 END) AS confirmation_cnt,
+        COUNT(c.time_stamp) AS request_cnt
+    FROM Signups s
+    LEFT JOIN Confirmations c ON s.user_id = c.user_id
+    GROUP BY s.user_id
+)
+
+SELECT
+    user_id,
+    CASE 
+        WHEN request_cnt = 0 THEN 0
+        ELSE ROUND(confirmation_cnt / request_cnt, 2)
+    END AS confirmation_rate
+FROM confirmation_cnt;
+
+
+
+
+----------------------------------------------------------
+-- 1978 employees whose manager left the company
+----------------------------------------------------------
+SELECT
+    employee_id
+FROM Employees
+WHERE 
+    salary < 30000
+    AND manager_id NOT IN (SELECT employee_id FROM Employees)
+ORDER BY employee_id;
+
+
+
+
+----------------------------------------------------------
+-- 2356 Number of unique subjects taught by each teacher
+----------------------------------------------------------
+SELECT
+    teacher_id,
+    COUNT(DISTINCT subject_id) AS cnt
+FROM Teacher
+GROUP BY teacher_id;
+
+
+
+
+----------------------------------------------------------
+-- 3220 old and even transactions
+----------------------------------------------------------
+SELECT
+    transaction_date,
+    SUM(CASE WHEN MOD(amount, 2) != 0 THEN amount ELSE 0 END) AS odd_sum,
+    SUM(CASE WHEN MOD(amount, 2) = 0 THEN amount ELSE 0 END) AS even_sum
+FROM transactions
+GROUP BY transaction_date
+ORDER BY transaction_date;
+
+
+
+----------------------------------------------------------
+-- 3374 first letter capitalization II
+----------------------------------------------------------
+import pandas as pd
+
+def capitalize_content(user_content: pd.DataFrame) -> pd.DataFrame:
+    def convert_text(text: str) -> str:
+        return " ".join(
+            (
+                "-".join([part.capitalize() for part in word.split("-")])
+                if "-" in word
+                else word.capitalize()
+            )
+            for word in text.split(" ")
+        )
+
+    user_content["converted_text"] = user_content["content_text"].apply(convert_text)
+    return user_content.rename(columns={"content_text": "original_text"})[
+        ["content_id", "original_text", "converted_text"]
+    ]
+
+
+
+
+----------------------------------------------------------
+-- 3421 Find students who improved
+----------------------------------------------------------
+WITH exam_rank AS (
+    SELECT
+        student_id,
+        subject,
+        score,
+        RANK() OVER (PARTITION BY student_id, subject ORDER BY exam_date) AS rank_ase,
+        RANK() OVER (PARTITION BY student_id, subject ORDER BY exam_date DESC) AS rank_desc,
+        COUNT(exam_date) OVER (PARTITION BY student_id, subject) AS cnt_exam
+    FROM Scores
+),
+
+first_exam AS (
+    SELECT
+        student_id,
+        subject,
+        score AS first_score
+    FROM exam_rank
+    WHERE cnt_exam > 1 AND rank_ase = 1
+),
+
+last_exam AS (
+    SELECT
+        student_id,
+        subject,
+        score AS latest_score
+    FROM exam_rank
+    WHERE cnt_exam > 1 AND rank_desc = 1
+)
+
+SELECT
+    fe.student_id,
+    fe.subject,
+    fe.first_score,
+    le.latest_score
+FROM first_exam fe
+LEFT JOIN last_exam le ON fe.student_id = le.student_id AND fe.subject = le.subject
+WHERE le.latest_score > fe.first_score;
+
+
+
+
+----------------------------------------------------------
+-- 3436 find valid emails
+----------------------------------------------------------
+SELECT
+    *
+FROM Users
+WHERE REGEXP_LIKE(email, '^[a-zA-Z0-9_]+@[a-zA-Z]+\\.com$', 'i')
+ORDER BY user_id;
+
+
+
+----------------------------------------------------------
+-- 3793 find users with high token usage
+----------------------------------------------------------
+WITH user_stat AS (
+    SELECT
+        user_id,
+        COUNT(prompt) AS prompt_count,
+        ROUND(AVG(tokens), 2) AS avg_tokens
+    FROM prompts
+    GROUP BY user_id
+),
+
+large_token AS (
+    SELECT
+        DISTINCT p.user_id
+    FROM prompts p
+    LEFT JOIN user_stat us ON p.user_id = us.user_id
+    WHERE 
+        p.tokens > us.avg_tokens
+)
+
+SELECT
+    *
+FROM user_stat
+WHERE 
+    user_id IN (SELECT user_id FROM large_token)
+    AND prompt_count >= 3
+ORDER BY avg_tokens DESC, user_id;
+
+
+
+----------------------------------------------------------
+-- 3451 find invalid IP addresses
+----------------------------------------------------------
+WITH
+  InvalidIPs AS (
+    SELECT ip
+    FROM Logs
+    WHERE
+      LENGTH(ip) - LENGTH(REPLACE(ip, '.', '')) != 3
+      OR ip REGEXP '(^|\\.)0[0-9]'
+      -- Any number with 4 or more digits, Any 3-digit number starting with 3 through 9
+      -- Any 3-digit number starting with 2, where the second digit is 6 through 9, Any 3-digit number starting with 25, where the last digit is 6 through 9.
+      OR ip REGEXP '(^|\\.)([0-9]{4,}|[3-9][0-9]{2}|2[6-9][0-9]|25[6-9])(\\.|$)'
+  )
+SELECT ip, COUNT(*) AS invalid_count
+FROM InvalidIPs
+GROUP BY ip
+ORDER BY invalid_count DESC, ip DESC;
+
+
+
+----------------------------------------------------------
+-- 3465 Find products with valid serial numbers
+----------------------------------------------------------
+SELECT *
+FROM products
+WHERE 
+    -- (?-i) (Case-Sensitive): This is a flag that turns off case-insensitivity. 
+    -- It ensures the "SN" must be uppercase. It will not match "sn" or "Sn".
+    -- \b (Word Boundary): This ensures the pattern matches a whole "word" and isn't tucked inside another string.
+    -- For example, it will match SN1234-5678, but it won't match SERIALSN1234-56789
+    description REGEXP '(?-i)\\bSN[0-9]{4}-[0-9]{4}\\b'
+ORDER BY product_id;
+
+
+
+----------------------------------------------------------
+-- 3475 DNA pattern recognition
+----------------------------------------------------------
+SELECT
+  *,
+  dna_sequence REGEXP '^ATG' AS has_start,
+  dna_sequence REGEXP 'TAA$|TAG$|TGA$' AS has_stop,
+  dna_sequence REGEXP 'ATAT' AS has_atat,
+  dna_sequence REGEXP 'GGG' AS has_ggg
+FROM Samples
+ORDER BY sample_id;
